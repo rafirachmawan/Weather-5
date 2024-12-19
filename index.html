@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D Weather App</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
+        background: radial-gradient(circle, #1a2a6c, #b21f1f, #fdbb2d);
+      }
+
+      canvas {
+        display: block;
+      }
+
+      #ui {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: white;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+        z-index: 10;
+      }
+
+      input {
+        padding: 10px;
+        margin: 10px 0;
+        width: 80%;
+        font-size: 18px;
+        border: none;
+        border-radius: 5px;
+        outline: none;
+      }
+
+      button {
+        padding: 10px 20px;
+        font-size: 18px;
+        background: #ff5722;
+        border: none;
+        color: white;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+
+      button:hover {
+        background: #e64a19;
+      }
+
+      #weather {
+        margin-top: 15px;
+        font-size: 18px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="ui">
+      <h1>3D Weather App</h1>
+      <input id="city" type="text" placeholder="Enter City" />
+      <button onclick="fetchWeather()">Get Weather</button>
+      <div id="weather"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+      // Setup Three.js scene
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      // Lighting
+      const light = new THREE.PointLight(0xffffff, 1.5, 100);
+      light.position.set(5, 5, 5);
+      scene.add(light);
+
+      // Background Stars
+      const starGeometry = new THREE.BufferGeometry();
+      const starMaterial = new THREE.PointsMaterial({ color: 0xffffff });
+
+      const starVertices = [];
+      for (let i = 0; i < 10000; i++) {
+        const x = (Math.random() - 0.5) * 2000;
+        const y = (Math.random() - 0.5) * 2000;
+        const z = (Math.random() - 0.5) * 2000;
+        starVertices.push(x, y, z);
+      }
+
+      starGeometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(starVertices, 3)
+      );
+
+      const stars = new THREE.Points(starGeometry, starMaterial);
+      scene.add(stars);
+
+      // Weather Sphere
+      const geometry = new THREE.SphereGeometry(1, 32, 32);
+      const material = new THREE.MeshStandardMaterial({ color: 0x0077ff });
+      const sphere = new THREE.Mesh(geometry, material);
+      scene.add(sphere);
+
+      camera.position.z = 5;
+
+      // Animation loop
+      function animate() {
+        requestAnimationFrame(animate);
+        sphere.rotation.x += 0.005;
+        sphere.rotation.y += 0.01;
+        stars.rotation.y += 0.0005;
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      // Fetch weather data
+      const apiKey = "2507076da25363f2bed2b35ad03b3aba";
+
+      async function fetchWeather() {
+        const city = document.getElementById("city").value;
+        const weatherDiv = document.getElementById("weather");
+
+        try {
+          const response = await fetch(
+            `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`
+          );
+          const data = await response.json();
+
+          if (data.cod !== 200) {
+            weatherDiv.innerHTML = "City not found!";
+            return;
+          }
+
+          const { main, weather } = data;
+          const temp = main.temp;
+          const description = weather[0].description;
+
+          weatherDiv.innerHTML = `Temperature: ${temp}°C <br> Condition: ${description}`;
+
+          // Change sphere color based on temperature
+          if (temp < 15) {
+            material.color.set(0x0000ff); // Cold (blue)
+          } else if (temp < 30) {
+            material.color.set(0xffff00); // Mild (yellow)
+          } else {
+            material.color.set(0xff0000); // Hot (red)
+          }
+        } catch (error) {
+          weatherDiv.innerHTML = "Error fetching weather data!";
+        }
+      }
+    </script>
+  </body>
+</html>
